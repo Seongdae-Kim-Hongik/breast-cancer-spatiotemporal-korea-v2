@@ -1,0 +1,17 @@
+suppressPackageStartupMessages({library(INLA);library(jsonlite)})
+D<-normalizePath('BRCA_재투고준비_20261104/kh_repair/final_cc2');N<-file.path(D,'numerical_review');dec<-fromJSON(file.path(N,'KH_IV_decision.json'));stopifnot(isTRUE(dec$adopt),all(unlist(dec$checks)))
+O<-file.path(N,'adopted');dir.create(O,showWarnings=FALSE);stopifnot(!file.exists(file.path(O,'S43_fit_KH_typeIV_validated.rds')))
+m<-readRDS(dec$selected_fit);diag<-attr(m,'numerical_review');stopifnot(isTRUE(diag$clean),length(m$misc$warnings)==0)
+dep<-fromJSON(file.path(D,'dependency_manifest.json'));B<-dirname(dep$panel_source);R<-file.path(B,'results_std');regions<-fromJSON(file.path(D,'region_order.json'))
+stopifnot(digest::digest(file=dep$panel_source,algo='sha256')==dep$authorized_panel_sha256,digest::digest(file=file.path(R,'nb_BRCA.graph'),algo='sha256')==dep$graph_sha256)
+# Copy selected object byte-for-byte; leave initial canonical KH RDS untouched.
+stopifnot(file.copy(dec$selected_fit,file.path(O,'S43_fit_KH_typeIV_validated.rds'),overwrite=FALSE))
+cfg<-fromJSON(file.path(B,'config_BRCA_std.json'));hyp<-cfg$sets_after_vif[[cfg$rules$main_set]];vars<-unique(c(hyp,cfg$forced));f<-m$summary.fixed[vars,,drop=FALSE]
+out<-data.frame(analysis='KH_typeIV_validated',group='3_spacetime',cov=vars,IRR=exp(f$mean),lo=exp(f$`0.025quant`),hi=exp(f$`0.975quant`),cred=f$`0.025quant`>0|f$`0.975quant`<0,role=ifelse(vars%in%hyp,'hypothesis','forced'),WAIC=m$waic$waic,DIC=m$dic$dic,n_obs=3206,n_regions=229,years='2011-2024',numerical_status='VALIDATED_TWO_START_REPRODUCIBILITY',provisional=FALSE,note='Selected retry_A a priori after both clean repeats passed; initial warned fit preserved/excluded')
+write.csv(out,file.path(O,'S43_part_KH_typeIV_validated.csv'),row.names=FALSE,fileEncoding='UTF-8')
+sr<-m$summary.random$area;stopifnot(identical(as.integer(sr$ID[1:229]),1:229))
+p<-vapply(1:229,function(i)1-inla.pmarginal(0,m$marginals.random$area[[i]]),numeric(1));s6<-read.csv(file.path(R,'S6_spatial_RR.csv'),colClasses=c(sigungu_cd='character'));stopifnot(identical(as.character(s6$fbd_region),regions))
+a<-data.frame(area=1:229,fbd_region=regions,RR=exp(sr$mean[1:229]),lo=exp(sr$`0.025quant`[1:229]),hi=exp(sr$`0.975quant`[1:229]),P_gt1=p,class=ifelse(p>.95,'hotspot',ifelse(p<.05,'coldspot','neutral')),sigungu_cd=s6$sigungu_cd,provisional=FALSE,numerical_status='VALIDATED_TWO_START_REPRODUCIBILITY')
+write.csv(a,file.path(O,'S46_KH4_spatialRR.csv'),row.names=FALSE,fileEncoding='UTF-8')
+write_json(list(selected_fit=normalizePath(file.path(O,'S43_fit_KH_typeIV_validated.rds')),selected_fit_sha256=digest::digest(file=file.path(O,'S43_fit_KH_typeIV_validated.rds'),algo='sha256'),initial_fit_preserved=file.path(R,'S43_fit_KH_typeIV.rds'),initial_fit_excluded_from_final_inference=TRUE,accepted_numerical_settings=diag$control_inla,comparison=dec$comparison_AB,panel_sha256=dep$authorized_panel_sha256,graph_sha256=dep$graph_sha256,no_new_fit_for_S46=TRUE),file.path(O,'adoption_provenance.json'),auto_unbox=TRUE,pretty=TRUE,digits=16)
+cat('Selected A copied to distinct adopted path; initial KH files untouched; S46 staged for refresh\n')

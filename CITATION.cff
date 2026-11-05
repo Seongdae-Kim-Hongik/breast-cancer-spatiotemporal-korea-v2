@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "Please cite the corrected v2.0.0 code and aggregate-data archive using its version DOI."
+title: "Breast cancer treatment geography in Korea, 2011-2024: corrected code and district-year data"
+authors:
+  - family-names: Kim
+    given-names: Seongdae
+    affiliation: Hongik University
+version: 2.0.0
+date-released: 2026-11-04
+doi: 10.5281/zenodo.23938401
+url: "https://zenodo.org/records/23938401"
+license: MIT
+repository-code: "https://github.com/Seongdae-Kim-Hongik/breast-cancer-spatiotemporal-korea-v2"
+# MIT denotes software; data/source rights are distinguished in DATA_RIGHTS.md.
